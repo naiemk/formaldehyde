@@ -1,0 +1,29 @@
+
+.Form {
+  margin-left: 30px;
+  margin-right: 50px;
+  padding: 30px 30px 30px 30px;
+  border: solid 1px;
+}
+
+.Long-textbox {
+  width: 200px;
+}
+
+.Sections {
+  border: solid 1px;
+  padding: 5px 5px 5px 5px
+}
+
+.Section {
+  border: solid 1px;
+  padding: 5px 5px 5px 5px
+}
+
+a.hand {
+    cursor: pointer;
+}
+
+.space-under {
+  margin-bottom: 15px;
+}
