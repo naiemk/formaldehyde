@@ -15,22 +15,20 @@ export default class DefaultTheme {
 
   _getStateForKey(item) {
       if (!item || !item.key) return {};
-      console.log('asd',item)
       let key = item.key.split('$')[0];
       let parentKey = (item.parentKey || "");
-      console.log(('dada',this.dataModel))
-      return (this.dataModel[parentKey + '.' + key])
+      return (this.dataModel[parentKey + '.' + key] || [])
   }
 
   handleChange(event) {
     let target = event.target;
     let targetType = target.type;
     if (!targetType) return;
-    let name = target.name.split('$')[0];
     let parentKey = target.getAttribute('data-parent-key') || '';
     let key = (target.getAttribute('data-key') || '').split('$')[0];
     let value = target.value;
-    let dataModelKey = name;
+    let checkboxName = target.name.split('$')[0]
+    let dataModelKey = parentKey + '.' + key;
     switch (targetType) {
       case 'text':
       case 'select-one':
@@ -40,29 +38,31 @@ export default class DefaultTheme {
           .map(o => o.value);
         break;
       case 'radio':
-        dataModelKey = parentKey + '.' + name;
+        dataModelKey = parentKey + '.' + checkboxName;
         value = key;
         break;
       case 'checkbox':
         let multiCheckbox = (target.getAttribute('data-multiple') || '') === 'true';
         if (multiCheckbox) {
-          dataModelKey = parentKey + '.' + name;
+          dataModelKey = parentKey + '.' + checkboxName;
           value = (this.dataModel[dataModelKey] || {})
           value = {...value, [key]: target.checked}
         } else {
-          dataModelKey = parentKey + '.' + key.split('$')[0];
           value = target.checked;
         }
         break;
       case 'file':
-        dataModelKey = parentKey + '.' + key;
+        let fileName = (target.value || '').replace(/\\/g,'/').split('/').pop()
         value = (this.dataModel[dataModelKey] || [])
-        value.push({ file: target.value, uploaded: false });
+        value.push({ file: fileName, uploaded: false });
         break;
       default:
     }
     this.dataModel[dataModelKey] = value;
-    console.log(this.dataModel)
+    this.comp.setState({...this.comp.sate, dataModel: this.dataModel});
+    if (this.comp.onChange) {
+      this.comp.onChange({ 'target': target, 'dataModelKey': dataModelKey });
+    }
   }
 
   noSections() {
@@ -151,7 +151,8 @@ export default class DefaultTheme {
         <div className="form-group">
           <label>{item.label}</label>
           <input type="text" className="form-control"
-                 name={item.key} onChange={this.handleChange}
+                 data-key={item.key} data-parent-key={item.parentKey}
+                 onChange={this.handleChange}
                  placeholder={watermark || item.label}
                  />
           <small className="form-text text-muted">{item.comments}</small>
@@ -165,7 +166,8 @@ export default class DefaultTheme {
     return (this._wrapLabel(item,() => {
         return (
           <input type="text" className="form-control"
-                 name={item.key} onChange={this.handleChange}
+                 data-key={item.key} data-parent-key={item.parentKey}
+                 onChange={this.handleChange}
                  placeholder={item.label}/>
          )
       })
@@ -176,7 +178,8 @@ export default class DefaultTheme {
     return (this._wrapLabel(item,() => {
         return (
           <textarea className="form-control" rows="3"
-            name={item.key} onChange={this.handleChange}
+            data-key={item.key} data-parent-key={item.parentKey}
+            onChange={this.handleChange}
             value={item.value}
           ></textarea>
           )
@@ -189,8 +192,8 @@ export default class DefaultTheme {
         <label className="form-check-label">
           <input className="form-check-input" type={type}
                   onChange={this.handleChange}
-                  name={item.name}
                   data-key={item.key}
+                  name={item.name}
                   data-parent-key={item.parentKey}
                   data-multiple={multiple}
                   checked={item.checked}
@@ -204,7 +207,8 @@ export default class DefaultTheme {
   select(item) {
     return (this._wrapLabel(item,() => (<div>
         <select type='select' className="form-control custom-select"
-        name={item.key} onChange={this.handleChange}
+        data-key={item.key} data-parent-key={item.parentKey}
+        onChange={this.handleChange}
         >
           {item.list.map((lit) => (
             <option key={lit}> {lit} </option>
@@ -217,7 +221,8 @@ export default class DefaultTheme {
   multiSelect(item) {
     return this._wrapLabel(item,() => (<div>
         <select className="form-control" size={item.list.length} multiple
-        name={item.key} onChange={this.handleChange}
+        data-key={item.key} data-parent-key={item.parentKey}
+        onChange={this.handleChange}
         >
           {item.list.map((lit) => (
             <option key={lit}> {lit} </option>
@@ -255,9 +260,18 @@ export default class DefaultTheme {
   }
 
 
+  _camelCase(dashedKey) {
+      if (!dashedKey) {
+        return  "";
+      }
+      return dashedKey.split('-')
+          .map(p => p.substr(0,1).toUpperCase() + p.toLowerCase().substr(1))
+          .join('')
+  }
 
   custom(item) {
-    let handler = this.__proto__['render' + item.customTag]
+    console.log('render' + this._camelCase(item.customTag))
+    let handler = this.__proto__['render' + this._camelCase(item.customTag)]
     if (!handler) {
       return (
         <b> {item.customTag} <br/></b>
@@ -272,21 +286,25 @@ export default class DefaultTheme {
         {this._wrapLabel(item, () => (
           <input type="file" data-key={item.key} data-parent-key={item.parentKey}
                 className="form-control" onChange={this.handleChange} />
-        ))}
-        <div className = "col-6 blockquote">
-          <ul className="list-group">
-            {(this._getStateForKey(item) || []).map(file => (
-              <li key={file.file} className="list-group-item justify-content-between">
-                {file.file}
-                {
-                  file.uploaded ?
-                    <span className="badge badge-success badge-pill">ready</span>
-                    : <span className="badge badge-default badge-pill">...</span>
-                }
-              </li>
-          ))};
-          </ul>
-        </div>
+         ))}
+         {this._getStateForKey(item).length > 0 ?
+            <div className = "col-12 blockquote">
+              <ul className="list-group">
+                {this._getStateForKey(item).map(file => (
+                  <li key={file.file} className="list-group-item justify-content-between">
+                    <small>
+                      {file.file}
+                    </small>
+                    {
+                      file.uploaded ?
+                        <span className="badge badge-success badge-pill">ready</span>
+                        : <span className="badge badge-default badge-pill">...</span>
+                    }
+                  </li>
+                ))}
+              </ul>
+            </div> : <div> </div>
+          }
       </div>
     );
   }
