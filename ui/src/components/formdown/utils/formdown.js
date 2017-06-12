@@ -20,6 +20,14 @@ class FormDownContext {
     return line.substr(0, 1) === '#' || line.length === 0
   }
 
+  _setLabelValue(lineContext, lineEnding) {
+    let parts = lineEnding.split(':=', 2)
+    lineContext.label = parts[0].trim();
+    lineContext.value = (parts[1] ||'')
+      .split(',').map(p => p.trim())
+      .filter(p => p.length > 0);
+  }
+
   _checkMulti(lineContext, parts) {
     if (!parts[0]) return false;
     let firstChar = parts[0].substr(0, 1);
@@ -35,7 +43,7 @@ class FormDownContext {
   _processCustom(lineContext, parts) {
     lineContext.customTag = parts[0].replace('<', '').replace('>', '');
     parts.shift();
-    lineContext.label = parts.join(' ').trim();
+    this._setLabelValue(lineContext, parts.join(' ').trim());
   }
 
   _processList(lineContext, parts) {
@@ -54,11 +62,11 @@ class FormDownContext {
     }
     lineContext.list = pair[0].replace('[', '').split(',')
                           .map(i => i.trim());
-    lineContext.label = (pair[1] || '').trim();
+    this._setLabelValue(lineContext, (pair[1] || '').trim());
   }
 
   _processComment(lineContext, parts) {
-    lineContext.label = parts.join(' ')
+    this._setLabelValue(lineContext, parts.join(' '));
   }
 
   _processLine(lineContext, parts) {
@@ -221,14 +229,16 @@ class FormDownContext {
             key: key,
             type: item.multiple ? 'checkboxGroup' : 'radioGroup',
             list: item.list,
-            label: item.label
+            label: item.label,
+            value: item.value
           });
           return;
         }
         form.controls.push({
           key: key,
           type: 'checkbox',
-          label: item.label });
+          label: item.label,
+          value: item.value });
         return;
       }
       if (item.lineType === 'shortTextbox' || item.lineType === 'longTextbox' ||
@@ -236,7 +246,8 @@ class FormDownContext {
             form.controls.push({
               key: key,
               type: item.lineType,
-              label: item.label });
+              label: item.label,
+              value: item.value });
             return;
           }
       if (item.lineType === 'list') {
@@ -244,7 +255,8 @@ class FormDownContext {
           key: key,
           type: item.multiple ? 'multiSelect' : 'select',
           list: item.list,
-          label: item.label });
+          label: item.label,
+          value: item.value });
         return;
       }
       if (item.lineType === 'custom') {
@@ -252,7 +264,8 @@ class FormDownContext {
           key: key,
           type: 'custom',
           customTag: item.customTag,
-          label: item.label });
+          label: item.label,
+          value: item.value  });
         return;
       }
     });

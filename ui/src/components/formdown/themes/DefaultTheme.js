@@ -3,66 +3,13 @@
 import React from 'react';
 import {Section} from '../Sections'
 import {FormDownRender, FormControl} from '../FormDownRender'
+import {History} from '../History'
 import './Default.css'
 
 export default class DefaultTheme {
   constructor(component) {
     this.comp = component;
-    this.dataModel = component.dataModel || {};
-    component.dataModel = this.dataModel;
-    this.handleChange = this.handleChange.bind(this);
-  }
-
-  _getStateForKey(item) {
-      if (!item || !item.key) return {};
-      let key = item.key.split('$')[0];
-      let parentKey = (item.parentKey || "");
-      return (this.dataModel[parentKey + '.' + key] || [])
-  }
-
-  handleChange(event) {
-    let target = event.target;
-    let targetType = target.type;
-    if (!targetType) return;
-    let parentKey = target.getAttribute('data-parent-key') || '';
-    let key = (target.getAttribute('data-key') || '').split('$')[0];
-    let value = target.value;
-    let checkboxName = target.name.split('$')[0]
-    let dataModelKey = parentKey + '.' + key;
-    switch (targetType) {
-      case 'text':
-      case 'select-one':
-        break;
-      case 'select-multiple':
-        value = [].slice.call(target.selectedOptions)
-          .map(o => o.value);
-        break;
-      case 'radio':
-        dataModelKey = parentKey + '.' + checkboxName;
-        value = key;
-        break;
-      case 'checkbox':
-        let multiCheckbox = (target.getAttribute('data-multiple') || '') === 'true';
-        if (multiCheckbox) {
-          dataModelKey = parentKey + '.' + checkboxName;
-          value = (this.dataModel[dataModelKey] || {})
-          value = {...value, [key]: target.checked}
-        } else {
-          value = target.checked;
-        }
-        break;
-      case 'file':
-        let fileName = (target.value || '').replace(/\\/g,'/').split('/').pop()
-        value = (this.dataModel[dataModelKey] || [])
-        value.push({ file: fileName, uploaded: false });
-        break;
-      default:
-    }
-    this.dataModel[dataModelKey] = value;
-    this.comp.setState({...this.comp.sate, dataModel: this.dataModel});
-    if (this.comp.onChange) {
-      this.comp.onChange({ 'target': target, 'dataModelKey': dataModelKey });
-    }
+    this.handleChange = this.comp.handleChange.bind(this.comp);
   }
 
   noSections() {
@@ -146,18 +93,22 @@ export default class DefaultTheme {
 
   shortTextbox(item, watermark) {
     return (
-      <div className="row">
-      <div className="col-6">
-        <div className="form-group">
-          <label>{item.label}</label>
-          <input type="text" className="form-control"
-                 data-key={item.key} data-parent-key={item.parentKey}
-                 onChange={this.handleChange}
-                 placeholder={watermark || item.label}
-                 />
-          <small className="form-text text-muted">{item.comments}</small>
+      <div>
+        <div className="row">
+          <div className="col-6">
+            <div className="form-group">
+              <label>{item.label}</label>
+              <input type="text" className="form-control"
+                     data-key={item.key} data-parent-key={item.parentKey}
+                     onChange={this.handleChange}
+                     placeholder={watermark || item.label}
+                     value={this.comp.getValue(item)}
+                     />
+              <small className="form-text text-muted">{item.comments}</small>
+            </div>
+          </div>
         </div>
-        </div>
+        <History item={item} service={this.comp} theme={this} />
       </div>
       )
   }
@@ -270,7 +221,6 @@ export default class DefaultTheme {
   }
 
   custom(item) {
-    console.log('render' + this._camelCase(item.customTag))
     let handler = this.__proto__['render' + this._camelCase(item.customTag)]
     if (!handler) {
       return (
@@ -287,10 +237,10 @@ export default class DefaultTheme {
           <input type="file" data-key={item.key} data-parent-key={item.parentKey}
                 className="form-control" onChange={this.handleChange} />
          ))}
-         {this._getStateForKey(item).length > 0 ?
+         {this.comp.getValue(item).length > 0 ?
             <div className = "col-12 blockquote">
               <ul className="list-group">
-                {this._getStateForKey(item).map(file => (
+                {this.comp.getValue(item).map(file => (
                   <li key={file.file} className="list-group-item justify-content-between">
                     <small>
                       {file.file}
@@ -307,6 +257,43 @@ export default class DefaultTheme {
           }
       </div>
     );
+  }
+
+  renderHistory(history, key) {
+    return (
+      <div>
+        <div className="float-right">
+          <button className="btn btn-outline-primary btn-sm" onClick={() => {
+            let state = this.comp.state['hist-vis-' + key];
+            this.comp.setState({...this.comp.state, ['hist-vis-' + key] : !state})
+                console.log(this.comp.state['hist-vis-' + key] )
+            }
+          }>
+              history
+          </button>
+        </div>
+        {this.comp.state['hist-vis-' + key] === true ? (
+            <div id={'col-' + key}>
+              <div className="history card card-block">
+                {history.map(hist => (
+                  <div className="row" key={hist.id}>
+                    <div className="col-8 text-muted small">
+                      &nbsp;&nbsp;
+                      {hist.actor ? <span className="badge badge-info">{hist.actor}</span> : null}
+                      {hist.time} -&nbsp;
+                      {hist.value}
+                      {hist.note ?
+                        <div className="history alert alert-warning" role="alert">
+                          {hist.note}
+                        </div> : null}
+                    </div>
+                  </div>
+              ))}
+            </div>
+            </div>
+        ) : null}
+      </div>
+    )
   }
 
   _wrapLabel(item, renderer) {
