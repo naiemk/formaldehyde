@@ -3,7 +3,7 @@
 import React from 'react';
 import {Section} from '../Sections'
 import {FormDownRender, FormControl} from '../FormDownRender'
-import {History} from '../History'
+import {History, HistoryButton} from '../History'
 import './Default.css'
 
 export default class DefaultTheme {
@@ -18,7 +18,7 @@ export default class DefaultTheme {
     )
   }
 
-  sections(sections) {
+  sections(sections, submitText) {
     let comp = this.comp;
     if (!sections || sections.length === 0) return this.noSections();
     let selectedSection = comp.state.selectedSection || sections[0].key;
@@ -30,7 +30,8 @@ export default class DefaultTheme {
               {sections.map(s =>(
                   <li key={s.key} className="nav-item">
                     <a className={"hand nav-link "
-                        + (selectedSection === s.key ? "active" : "") }
+                        + (selectedSection === s.key ? "active" : "")
+                        + (this.comp.validateSection(s).hasError ? " text-danger" : "") }
                         onClick={() => {
                                   comp.setState({...comp.state, selectedSection: s.key});
                                   return false;
@@ -45,10 +46,34 @@ export default class DefaultTheme {
                 .map(s =>(
                   <Section key={s.key} theme={this} section={s} />
                 ))}
+            { this._renderSubmitButton(sections, submitText) }
           </div>
         </div>
       </div>
     )
+  }
+
+  _renderSubmitButton(sections, submitText) {
+    if (!submitText) {
+      return null;
+    }
+    let hasError = this.comp.validateSections().hasError;
+    return (
+      <div className="row">
+        <div className="col-6 col-md-9">
+        </div>
+        <div className="col-6 col-md-3 ">
+          <button className={"form-control btn btn-primary "
+                            + (hasError ? "disabled" : "")}>
+            {submitText}
+          </button>
+          {hasError ?
+            <small className="form-text text-danger">Please fix all <br/>errors
+            in red</small> :
+            null}
+
+        </div>
+      </div>)
   }
 
   section(section) {
@@ -92,31 +117,24 @@ export default class DefaultTheme {
   }
 
   shortTextbox(item, watermark) {
-    return (
-      <div>
-        <div className="row">
-          <div className="col-6">
-            <div className="form-group">
-              <label>{item.label}</label>
-              <input type="text" className="form-control"
-                     data-key={item.key} data-parent-key={item.parentKey}
-                     onChange={this.handleChange}
-                     placeholder={watermark || item.label}
-                     value={this.comp.getValue(item)}
-                     />
-              <small className="form-text text-muted">{item.comments}</small>
-            </div>
-          </div>
-        </div>
-        <History item={item} service={this.comp} theme={this} />
-      </div>
-      )
+    return (this._wrapLabel(item,() => {
+        return (
+          <input type="text" className="form-control"
+                 data-item={JSON.stringify(item)}
+                 data-key={item.key} data-parent-key={item.parentKey}
+                 onChange={this.handleChange}
+                 placeholder={watermark || item.label}
+                 value={this.comp.getValue(item)}
+                 />
+         )
+      }))
   }
 
   longTextbox(item) {
     return (this._wrapLabel(item,() => {
         return (
           <input type="text" className="form-control"
+                 data-item={JSON.stringify(item)}
                  data-key={item.key} data-parent-key={item.parentKey}
                  onChange={this.handleChange}
                  placeholder={item.label}/>
@@ -137,19 +155,23 @@ export default class DefaultTheme {
       }))
   }
 
-  checkbox(item, type="checkbox", multiple=false) {
+  checkbox(item, type="checkbox", multiple=false, listItem="") {
+    let reactKey = multiple ? listItem : item.key;
     return (
-      <div className="form-check" key={item.key}>
+      <div className="form-check" key={reactKey}>
         <label className="form-check-label">
-          <input className="form-check-input" type={type}
+          <input className="form-check-input"
+                  type={type}
                   onChange={this.handleChange}
+                  data-item={JSON.stringify(item)}
                   data-key={item.key}
-                  name={item.name}
+                  data-list-item={reactKey}
+                  name={item.key}
                   data-parent-key={item.parentKey}
                   data-multiple={multiple}
                   checked={item.checked}
                   value="" />
-           &nbsp;{item.label}
+           &nbsp;{listItem}
         </label>
       </div>
     );
@@ -158,6 +180,7 @@ export default class DefaultTheme {
   select(item) {
     return (this._wrapLabel(item,() => (<div>
         <select type='select' className="form-control custom-select"
+        data-item={JSON.stringify(item)}
         data-key={item.key} data-parent-key={item.parentKey}
         onChange={this.handleChange}
         >
@@ -172,6 +195,7 @@ export default class DefaultTheme {
   multiSelect(item) {
     return this._wrapLabel(item,() => (<div>
         <select className="form-control" size={item.list.length} multiple
+        data-item={JSON.stringify(item)}
         data-key={item.key} data-parent-key={item.parentKey}
         onChange={this.handleChange}
         >
@@ -187,8 +211,7 @@ export default class DefaultTheme {
     return this._wrapLabel(item, () => (
       <div className="form-group">
         {item.list.map((lit) => (
-          this.checkbox({key: lit, parentKey: item.parentKey,
-                          name: item.key, label: lit}, "radio")
+          this.checkbox(item, "radio", item.list.length > 1, lit)
         ))}
       </div>
     ))
@@ -198,8 +221,7 @@ export default class DefaultTheme {
     return this._wrapLabel(item, () => (
       <div className="form-group">
         {item.list.map((lit) => (
-          this.checkbox({key: lit, parentKey: item.parentKey,
-                          name: item.key, label: lit}, "checkbox", item.list.length > 1)
+          this.checkbox(item, "checkbox", item.list.length > 1, lit)
         ))}
       </div>
     ))
@@ -233,75 +255,88 @@ export default class DefaultTheme {
   renderUpload(item) {
     return (
       <div>
-        {this._wrapLabel(item, () => (
-          <input type="file" data-key={item.key} data-parent-key={item.parentKey}
-                className="form-control" onChange={this.handleChange} />
+        {this._wrapLabel(item, (err) => (
+          <div><input type="file"
+                data-item={JSON.stringify(item)}
+                data-key={item.key} data-parent-key={item.parentKey}
+                className="form-control btn btn-sm btn-outline-primary"
+                onChange={this.handleChange} />
+          {this.comp.getValue(item).length > 0 ?
+            <div className="row space-under">
+              <div className="col-2">
+              </div>
+             <div className="col-10">
+               <ul className="list-group">
+                 {this.comp.getValue(item).map(file => (
+                   <li key={file.file} className="list-group-item justify-content-between">
+                     <small className="form-text text-muted">
+                       {file.file}
+                     </small>
+                     {
+                       file.uploaded ?
+                         <span className="badge badge-success badge-pill">ready</span>
+                         : <span className="badge badge-default badge-pill">...</span>
+                     }
+                   </li>
+                 ))}
+               </ul>
+             </div>
+           </div> : null}
+           </div>
          ))}
-         {this.comp.getValue(item).length > 0 ?
-            <div className = "col-12 blockquote">
-              <ul className="list-group">
-                {this.comp.getValue(item).map(file => (
-                  <li key={file.file} className="list-group-item justify-content-between">
-                    <small>
-                      {file.file}
-                    </small>
-                    {
-                      file.uploaded ?
-                        <span className="badge badge-success badge-pill">ready</span>
-                        : <span className="badge badge-default badge-pill">...</span>
-                    }
-                  </li>
-                ))}
-              </ul>
-            </div> : <div> </div>
-          }
       </div>
     );
   }
 
+  renderHistoryButton(key) {
+    return (  <span> &nbsp; <a className="btn btn-outline-primary btn-sm" onClick={() => {
+                  let state = this.comp.state['hist-vis-' + key];
+                  this.comp.setState({...this.comp.state, ['hist-vis-' + key] : !state})
+                }
+              }> history
+              </a> </span>);
+  }
+
   renderHistory(history, key) {
     return (
-      <div>
-        <div className="float-right">
-          <button className="btn btn-outline-primary btn-sm" onClick={() => {
-            let state = this.comp.state['hist-vis-' + key];
-            this.comp.setState({...this.comp.state, ['hist-vis-' + key] : !state})
-                console.log(this.comp.state['hist-vis-' + key] )
-            }
-          }>
-              history
-          </button>
-        </div>
-        {this.comp.state['hist-vis-' + key] === true ? (
-            <div id={'col-' + key}>
-              <div className="history card card-block">
-                {history.map(hist => (
-                  <div className="row" key={hist.id}>
-                    <div className="col-8 text-muted small">
-                      &nbsp;&nbsp;
-                      {hist.actor ? <span className="badge badge-info">{hist.actor}</span> : null}
-                      {hist.time} -&nbsp;
-                      {hist.value}
-                      {hist.note ?
-                        <div className="history alert alert-warning" role="alert">
-                          {hist.note}
-                        </div> : null}
+        this.comp.state['hist-vis-' + key] === true ? (
+            <div id={'col-' + key} className="row space-under">
+              <div className="col-12">
+                <div className="history card card-block">
+                  {history.map(hist => (
+                    <div className="row" key={hist.id}>
+                      <div className="col-12 text-muted small">
+                        &nbsp;&nbsp;
+                        {hist.actor ? <span className="badge badge-info">{hist.actor}</span> : null}
+                        {hist.time} -&nbsp;
+                        {hist.value}
+                        {hist.note ?
+                          <div className="history alert alert-warning" role="alert">
+                            {hist.note}
+                          </div> : null}
+                      </div>
                     </div>
-                  </div>
               ))}
+              </div>
+              </div>
             </div>
-            </div>
-        ) : null}
-      </div>
+        ) : null
     )
   }
 
   _wrapLabel(item, renderer) {
+    let validation = this.comp.validate(item) || {hasError: 0, message: ""}
     return (
-      <div className="form-group">
-        <label>{item.label}</label>
+      <div className={"form-group " + validation.hasError ? "has-danger" : ""}>
+        <label className="form-control-label">{item.label}
+        <HistoryButton item={item} service={this.comp} theme={this} />
+        </label>
         {renderer()}
+        {validation.hasError ?
+          <div className="form-control-feedback">{validation.message}</div>
+          : null}
         <small className="form-text text-muted">{item.comments}</small>
+        <History item={item} service={this.comp} theme={this} />
       </div>
     )
   }

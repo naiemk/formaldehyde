@@ -65,6 +65,10 @@ X *[…] # Checkbox / multi line allowed
       sections: sections });
   }
 
+  handleValidate(item) {
+    // Validate the item. Return {hasError, message}
+  }
+
   render() {
     return (
       <div className="App">
@@ -82,7 +86,9 @@ X *[…] # Checkbox / multi line allowed
             onChange={this.handleChange}
           />
           <pre>
-            <Sections sections={this.state.sections} />
+            <Sections sections={this.state.sections} submit="Save"
+              onValidate={this.handleValidate}
+             />
           </pre>
         </div>
       </div>

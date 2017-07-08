@@ -31,3 +31,19 @@ a.hand {
 .history {
   margin-left: 15px;
 }
+
+label {
+  white-space: normal;
+}
+
+.card-header {
+  white-space: normal;
+}
+
+.card-text {
+  white-space: normal;
+}
+
+input[type=file].form-control {
+    height: auto;
+}

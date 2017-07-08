@@ -1,5 +1,23 @@
 import { Component } from 'react';
 
+export class HistoryButton extends Component {
+  constructor() {
+    super();
+    this.state = {};
+  }
+  render() {
+    const item = this.props.item;
+    const theme = this.props.theme;
+    const service = this.props.service;
+
+    let history = service.getHistory(item);
+    if (!history) {
+      return null;
+    }
+    return theme.renderHistoryButton(item.key)
+  }
+}
+
 export class History extends Component {
   constructor() {
     super();
