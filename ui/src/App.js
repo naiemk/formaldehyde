@@ -17,7 +17,9 @@ GROUP      Contact info
 Update your contact info
 <Upload> Upload your data
 _ Name
+Name is $/valid ?, email, name_validor/ or else
 _ Surname
+ $/valid ?, email, name_validor/
 __ Address
 _ City
 [Select One, WA, NY] State
@@ -55,11 +57,13 @@ X *[…] # Checkbox / multi line allowed
     }
 
     this.handleChange = this.handleChange.bind(this);
+    this.handleValidate = this.handleValidate.bind(this);
     this.fdContext = formdown();
   }
 
   handleChange(event) {
     let sections = this.fdContext.multiSectionCompile(event.target.value);
+    this.fdContext.compileValidationRules(sections);
 
     this.setState({ formdown: event.target.value,
       sections: sections });
@@ -67,6 +71,7 @@ X *[…] # Checkbox / multi line allowed
 
   handleValidate(item) {
     // Validate the item. Return {hasError, message}
+    return "";
   }
 
   render() {

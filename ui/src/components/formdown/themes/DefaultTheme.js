@@ -64,7 +64,8 @@ export default class DefaultTheme {
         </div>
         <div className="col-6 col-md-3 ">
           <button className={"form-control btn btn-primary "
-                            + (hasError ? "disabled" : "")}>
+                            + (hasError ? "disabled" : "")}
+                  onClick={() => this.comp.setState({...this.comp.state, isSubmitted: true})}>
             {submitText}
           </button>
           {hasError ?
@@ -121,7 +122,6 @@ export default class DefaultTheme {
         return (
           <input type="text" className="form-control"
                  data-item={JSON.stringify(item)}
-                 data-key={item.key} data-parent-key={item.parentKey}
                  onChange={this.handleChange}
                  placeholder={watermark || item.label}
                  value={this.comp.getValue(item)}
@@ -135,7 +135,6 @@ export default class DefaultTheme {
         return (
           <input type="text" className="form-control"
                  data-item={JSON.stringify(item)}
-                 data-key={item.key} data-parent-key={item.parentKey}
                  onChange={this.handleChange}
                  placeholder={item.label}/>
          )
@@ -147,7 +146,6 @@ export default class DefaultTheme {
     return (this._wrapLabel(item,() => {
         return (
           <textarea className="form-control" rows="3"
-            data-key={item.key} data-parent-key={item.parentKey}
             onChange={this.handleChange}
             value={item.value}
           ></textarea>
@@ -164,10 +162,8 @@ export default class DefaultTheme {
                   type={type}
                   onChange={this.handleChange}
                   data-item={JSON.stringify(item)}
-                  data-key={item.key}
                   data-list-item={reactKey}
                   name={item.key}
-                  data-parent-key={item.parentKey}
                   data-multiple={multiple}
                   checked={item.checked}
                   value="" />
@@ -181,7 +177,6 @@ export default class DefaultTheme {
     return (this._wrapLabel(item,() => (<div>
         <select type='select' className="form-control custom-select"
         data-item={JSON.stringify(item)}
-        data-key={item.key} data-parent-key={item.parentKey}
         onChange={this.handleChange}
         >
           {item.list.map((lit) => (
@@ -196,7 +191,6 @@ export default class DefaultTheme {
     return this._wrapLabel(item,() => (<div>
         <select className="form-control" size={item.list.length} multiple
         data-item={JSON.stringify(item)}
-        data-key={item.key} data-parent-key={item.parentKey}
         onChange={this.handleChange}
         >
           {item.list.map((lit) => (
@@ -258,7 +252,6 @@ export default class DefaultTheme {
         {this._wrapLabel(item, (err) => (
           <div><input type="file"
                 data-item={JSON.stringify(item)}
-                data-key={item.key} data-parent-key={item.parentKey}
                 className="form-control btn btn-sm btn-outline-primary"
                 onChange={this.handleChange} />
           {this.comp.getValue(item).length > 0 ?
@@ -325,9 +318,9 @@ export default class DefaultTheme {
   }
 
   _wrapLabel(item, renderer) {
-    let validation = this.comp.validate(item) || {hasError: 0, message: ""}
+    let validation = this.comp.validate(item)
     return (
-      <div className={"form-group " + validation.hasError ? "has-danger" : ""}>
+      <div className={"form-group " + (validation.hasError ? "has-danger" : "")}>
         <label className="form-control-label">{item.label}
         <HistoryButton item={item} service={this.comp} theme={this} />
         </label>

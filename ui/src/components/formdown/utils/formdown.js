@@ -305,6 +305,31 @@ class FormDownContext {
 
     return allSections;
   }
+
+  compileValidationRules(allSections) {
+    this._extractListForAllSections(allSections, 'valid', 'validationRules');
+  }
+
+  _extractListForAllSections(allSections, listType, field) {
+    for(let s in allSections) {
+      for(let f in allSections[s].forms) {
+        for(let c in allSections[s].forms[f].controls) {
+          let control = allSections[s].forms[f].controls[c];
+          this._extractListFromComments(control, listType, field);
+        }
+      }
+    }
+  }
+
+  _extractListFromComments(item, listType, field) {
+    let regex = new RegExp('\\$/' + listType + '(.*?)/');
+    let find = (item.comments || '').match(regex);
+    if (!find || find.length < 2) {
+      return; // Nothing to extract
+    }
+    item.comments = item.comments.replace(regex, '');
+    item[field] = find[1].replace(/ /g, '').split(',');
+  }
 }
 
 export default function formdown() {

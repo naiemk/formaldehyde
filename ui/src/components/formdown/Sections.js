@@ -11,20 +11,22 @@ export function Section(params) {
 export class Sections extends Component {
   constructor() {
     super();
-    this.state = { dataModel : {}, dirtySet: new Set() };
+    // dataModel will hold the data for the model
+    // dirtySet will hold list of controls that are changed
+    // isSubmitted will identify whether the submit button is
+    // clicked. Useful for enabling validation
+    this.state = { dataModel : {}, dirtySet: new Set(), isSubmitted: false };
   }
 
   handleChange(event) {
     let target = event.target;
     let targetType = target.type;
     if (!targetType) return;
-    let parentKey = target.getAttribute('data-parent-key') || '';
-    let listItem = target.getAttribute('data-list-item') || ''
     let item = JSON.parse(target.getAttribute('data-item') || {});
-    let key = (target.getAttribute('data-key') || '').split('$')[0];
+    let parentKey = item.parentKey;
+    let key = item.key.split('$')[0];
+    let listItem = target.getAttribute('data-list-item') || ''
     let value = target.value;
-    // Get it all from item and listItem
-    let checkboxName = target.name.split('$')[0]
     let dataModelKey = parentKey + '.' + key;
     switch (targetType) {
       case 'text':
@@ -35,13 +37,11 @@ export class Sections extends Component {
           .map(o => o.value);
         break;
       case 'radio':
-        dataModelKey = parentKey + '.' + checkboxName;
         value = listItem;
         break;
       case 'checkbox':
         let multiCheckbox = (target.getAttribute('data-multiple') || '') === 'true';
         if (multiCheckbox) {
-          dataModelKey = parentKey + '.' + checkboxName;
           value = (this.state.dataModel[dataModelKey] || {})
           value = {...value, [listItem]: target.checked}
         } else {
@@ -57,9 +57,8 @@ export class Sections extends Component {
     }
     let dataModel = {...this.state.dataModel, [dataModelKey]: value};
     let dirtySet = this.state.dirtySet;
-    dirtySet.add(parentKey + '.' + key);
+    dirtySet.add(dataModelKey);
     this.setState({...this.sate, dataModel: dataModel, dirtySet: dirtySet});
-    console.log(dataModel)
   }
 
   getValue(item) {
@@ -70,30 +69,57 @@ export class Sections extends Component {
   }
 
   getHistory(item) {
-    return [
-      { id: 1, time: '2018/01/01', actor: 'naiem', value: 'Some value here',
-        note: 'This was no good! Try better!'},
-      { id: 2, time: '2018/01/01', actor: 'chili', value: 'love' }
-      ];
+    if (!this.props.history) {
+      return [];
+    }
+    return this.props.history[item.parentKey + '.' + (item.key || '').split('$')[0]]    
+    // return [
+    //   { id: 1, time: '2018/01/01', actor: 'naiem', value: 'Some value here',
+    //     note: 'This was no good! Try better!'},
+    //   { id: 2, time: '2018/01/01', actor: 'chili', value: 'love' }
+    //   ];
   }
 
   validate(item) {
-    if (item.key.length % 3 > 1) {
-      return {hasError: true, message: "The error is pretty petty"}
-    } else {
+    if (!this._shouldValidate(item) || (!this.props.onValidate)) {
       return {hasError: false}
     }
+    let errorMessage = this.props.onValidate(item);
+    return {hasError: errorMessage ? true : false, message: errorMessage}
   }
 
   validateSection(section) {
+    if (!this._shouldValidate()) {
+      return {hasError: false};
+    }
     // Validate every item in the section. But don't do it for undirty forms
-    return {hasError: true}
+    for(let f in section.forms) {
+      for(let c in section.forms[f].controls) {
+        if (this.validate(section.forms[f].controls[c]).hasError) {
+          return {hasError: true};
+        }
+      }
+    }
+    return {hasError: false};
   }
 
   validateSections() {
+    if (!this._shouldValidate()) {
+      return {hasError: false}
+    }
     // Validate every item in the form.
     const sections = this.props.sections;
-    return {hasError: true}
+    for (let section in sections) {
+      if (this.validateSection(sections[section]).hasError) {
+        return {hasError: true}
+      }
+    }
+    return {hasError: false}
+  }
+
+  _shouldValidate(item) {
+    return this.state.isSubmitted ||
+        (item && this.state.dirtySet.has(item.parentKey + '.' + item.key.split('$')[0]));
   }
 
   render() {
