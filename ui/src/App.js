@@ -4,6 +4,7 @@ import './App.css';
 import FormDownEditor from './components/FormDownEditor'
 import {Sections} from './components/formdown/Sections'
 import formdown from './components/formdown/utils/formdown'
+import ValidationRuleHelper from './components/formdown/utils/validationRuleHelper'
 
 class App extends Component {
   constructor (props) {
@@ -69,8 +70,14 @@ X *[…] # Checkbox / multi line allowed
       sections: sections });
   }
 
-  handleValidate(item) {
-    // Validate the item. Return {hasError, message}
+  handleValidate(validationRules, value) {
+    // Validate the item. Return message
+    for (let v in validationRules) {
+      let error = ValidationRuleHelper.rule(validationRules[v], value);
+      if (error) {
+        return error;
+      }
+    }
     return "";
   }
 

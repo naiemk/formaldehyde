@@ -146,8 +146,9 @@ export default class DefaultTheme {
     return (this._wrapLabel(item,() => {
         return (
           <textarea className="form-control" rows="3"
+            data-item={JSON.stringify(item)}
             onChange={this.handleChange}
-            value={item.value}
+            defaultValue={item.value || item.label}
           ></textarea>
           )
       }))

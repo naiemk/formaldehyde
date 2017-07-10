@@ -72,7 +72,7 @@ export class Sections extends Component {
     if (!this.props.history) {
       return [];
     }
-    return this.props.history[item.parentKey + '.' + (item.key || '').split('$')[0]]    
+    return this.props.history[item.parentKey + '.' + (item.key || '').split('$')[0]]
     // return [
     //   { id: 1, time: '2018/01/01', actor: 'naiem', value: 'Some value here',
     //     note: 'This was no good! Try better!'},
@@ -84,7 +84,8 @@ export class Sections extends Component {
     if (!this._shouldValidate(item) || (!this.props.onValidate)) {
       return {hasError: false}
     }
-    let errorMessage = this.props.onValidate(item);
+    let value = this.state.dataModel[item.parentKey + '.' + item.key.split('$')[0]];
+    let errorMessage = this.props.onValidate(item.validationRules, value);
     return {hasError: errorMessage ? true : false, message: errorMessage}
   }
 
